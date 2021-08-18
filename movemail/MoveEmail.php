@@ -2,6 +2,7 @@
     /**
      * @author Denis Genitoni <denis.genitoni@m4ss.net>
      * @copyright 2021 M4SS
+     * @description This php script help you to move all email received in your INBOX in specific folders, depending by project
      */
     
     class MoveEmail{
@@ -23,20 +24,20 @@
 
         private $numEmail;
 
-        public function __construct()
+        public function __construct(string $json)
         {
-            $result = $this->saveCredentials();
+            $result = $this->saveCredentials($json);
             if(!$result)
                 die("Impossible to find credentials.json file");
+        }
+        // connect with server
+        public function connection()
+        {
             $this->imap = imap_open($this->server, $this->credentials[0], $this->credentials[1]); // connect to imap server
-            $this->listDirs(); // obtain directories list of inbox
-            $this->listEmail(); // obtain list of email
-            $this->moveEmail(); // move email to a specific directory, by host of email
-            $this->closeConnection(); // close connection and remove not necessary email
         }
         
         // move email function
-        protected function moveEmail()
+        public function moveEmail()
         {
             $email = $this->getEmail(); // get email array 
             $num_email = count($this->getEmail()); // number of email in array
@@ -64,7 +65,7 @@
 
         }
         // obtain a list of directories of inbox
-        protected function listDirs()
+        public function listDirs()
         {
             $this->dirs = imap_list($this->imap, $this->server, '*');
         }
@@ -76,7 +77,7 @@
         }
 
         // obtain a list of email and save in a array
-        protected function listEmail()
+        public function listEmail()
         {
             // searh email on INBOX
             $inbox = $this->getListDirs()[0];
@@ -97,9 +98,10 @@
         }
 
         // close connection
-        protected function closeConnection()
+        public function closeConnection(bool $r = true)
         {
-            imap_expunge($this->getImap()); // delete all email marked to deletion
+            if($r)
+                imap_expunge($this->getImap()); // delete all email marked to deletion
             return imap_close($this->getImap()); // close imap connection
         }
 
@@ -107,12 +109,12 @@
          * @return bool
          * @method private for save all credentials from a json file
          */
-        private function saveCredentials()
+        private function saveCredentials(string $jsonFile)
         {
-            if(!is_file("credentials.json")) // check if credentials file is avaiable
+            if(!is_file($jsonFile)) // check if credentials file is avaiable
                 return false;
             
-            $json = file_get_contents("credentials.json"); // read credentials file
+            $json = file_get_contents($jsonFile); // read credentials file
             $json = json_decode($json, true); // decode json file in an array and not in a stdClass
             // var_dump($json); // for debug
 
@@ -206,6 +208,12 @@
 
     }
 
-    $email = new MoveEmail();
+    $email = new MoveEmail('credentials.json'); // specify path/to/filename.json
+    $email->connection(); // connect to imap server
+    $email->listDirs(); // obtain directories list of inbox
+    // $email->printListDirs(); // for debug
+    $email->listEmail(); // obtain list of email
+    $email->moveEmail(); // move email to a specific directory, by host of email
+    $email->closeConnection(); // close connection and remove not necessary email (use false parameters for keep these email)
 
-    var_dump($email->getEmail());
+    var_dump($email->getEmail()); // debug
